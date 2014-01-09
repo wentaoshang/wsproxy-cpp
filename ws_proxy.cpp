@@ -34,7 +34,7 @@ public:
     m_ux_sock.async_read_some(boost::asio::buffer (m_buf), boost::bind(&wsproxy_client::on_unix_message, this, _1, _2));
   }
 
-  void send (std::string msg)
+  void send (const std::string& msg)
   {
     boost::asio::write (m_ux_sock, boost::asio::buffer (msg));
   }
