@@ -11,3 +11,9 @@
 *.lai
 *.la
 *.a
+
+.DS_Store
+
+# ws_proxy binary
+
+ws_proxy
