@@ -1,5 +1,6 @@
 #include <iostream>
 #include <map>
+#include <cstdint>
 
 #include <websocketpp/config/asio_no_tls.hpp>
 #include <websocketpp/server.hpp>
@@ -12,6 +13,16 @@ typedef websocketpp::server<websocketpp::config::asio> ws_server;
 
 #define WSP_LOG 1
 
+typedef struct proxy_config
+{
+  const char *ndnd_addr;
+  int max_clients;
+  uint16_t proxy_port; 
+} proxy_config;
+
+// Global configuration
+proxy_config conf;
+
 class wsproxy_client
 {
 public:
@@ -22,7 +33,7 @@ public:
     : m_ux_sock (*io_srvc), m_wss (*wss), m_ws_hdl (hdl), m_closed (false)
   {
     // Setup Unix socket connection to ndnd
-    boost::asio::local::stream_protocol::endpoint local_ndnd ("/tmp/.ndnd.sock");
+    boost::asio::local::stream_protocol::endpoint local_ndnd (conf.ndnd_addr);
 
 #ifdef WSP_LOG
     std::cout << "wsproxy_client::ctor: trying to connect to local ndnd." << std::endl;
@@ -33,6 +44,11 @@ public:
 #endif
     m_ux_sock.async_read_some(boost::asio::buffer (m_buf), boost::bind(&wsproxy_client::on_unix_message, this, _1, _2));
   }
+
+  // ~wsproxy_client ()
+  // {
+  //   std::cout << "wsproxy_client::dtor: called." << std::endl;
+  // }
 
   void send (const std::string& msg)
   {
@@ -94,7 +110,7 @@ public:
     m_web_sock.set_open_handler (boost::bind(&wsproxy_server::on_ws_open, this, _1));
     m_web_sock.set_close_handler (boost::bind(&wsproxy_server::on_ws_close, this, _1));
     m_web_sock.init_asio (&m_io_srvc);
-    m_web_sock.listen (9696);
+    m_web_sock.listen (conf.proxy_port);
     m_web_sock.start_accept ();
   }
   
@@ -154,10 +170,82 @@ private:
 
 };
 
-
-
-int main ()
+void init_config (proxy_config *conf)
 {
+  conf->ndnd_addr = "/tmp/.ndnd.sock";
+  conf->max_clients = 50;
+  conf->proxy_port = 9696;
+}
+
+void usage ()
+{
+  std::cout << "Usage: ws_proxy [options]\n"
+	    << "Supported options:\n"
+	    << "    -c [ndnd_addr]: specify the unix socket address for local ndnd\n"
+	    << "                    by default, it is /tmp/.ndnd.sock\n"
+	    << "    -m [max_clients]: specify the number of maximum concurrent clients\n"
+	    << "                      by default, it is 50\n"
+	    << "    -p [proxy_port]: specify the port number for the proxy\n"
+	    << "                     by default, it is 9696\n";
+  exit (1);
+}
+
+void parse_arguments (proxy_config *conf, int argc, char* argv[])
+{
+  int i = 1;
+  while (i < argc)
+    {
+      if (strcmp (argv[i], "-c") == 0)
+	{
+	  i++;
+	  if (i >= argc)
+	    usage ();
+	  
+	  conf->ndnd_addr = argv[i];
+	  i++;
+	}
+      else if (strcmp (argv[i], "-m") == 0)
+	{
+	  i++;
+	  if (i >= argc)
+	    usage ();
+	  
+	  conf->max_clients = atoi (argv[i]);
+	  i++;
+	}
+      else if (strcmp (argv[i], "-p") == 0)
+	{
+	  i++;
+	  if (i >= argc)
+	    usage ();
+	  
+	  conf->proxy_port = (uint16_t) atoi (argv[i]);
+	  i++;
+	}
+      else
+	{
+	  // Fail and exit upon unknown options
+	  usage ();
+	}
+    }
+}
+
+int main (int argc, char* argv[])
+{
+  // Load default configuration
+  init_config (&conf);
+  
+  // Parse command line arguments
+  if (argc > 1)
+    {
+      parse_arguments (&conf, argc, argv);
+    }
+
+  std::cout << "main: conf.ndnd_addr = " << conf.ndnd_addr << std::endl
+	    << "      conf.max_clients = " << conf.max_clients << std::endl
+	    << "      conf.proxy_port = " << conf.proxy_port << std::endl;
+
+  // Start service
   wsproxy_server pserver;
   pserver.run ();
 }
