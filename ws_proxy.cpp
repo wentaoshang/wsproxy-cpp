@@ -9,13 +9,13 @@
 #include <boost/bind.hpp>
 
 typedef websocketpp::server<websocketpp::config::asio> ws_server;
-typedef boost::asio::local::stream_protocol::socket unix_socket;
 
 #define WSP_LOG 1
 
 class wsproxy_client
 {
 public:
+  typedef boost::asio::local::stream_protocol::socket unix_socket;
   
   wsproxy_client (boost::asio::io_service *io_srvc, ws_server* wss,
 		  websocketpp::connection_hdl hdl)
@@ -40,7 +40,6 @@ public:
   }
   
 private:
-  
   void on_unix_message (const boost::system::error_code &ec, std::size_t bytes_transferred)
   {
     if (!ec)
@@ -51,6 +50,10 @@ private:
 #endif
 	m_wss.send(m_ws_hdl, msg, websocketpp::frame::opcode::binary);
 	m_ux_sock.async_read_some(boost::asio::buffer (m_buf), boost::bind(&wsproxy_client::on_unix_message, this, _1, _2));
+      }
+    else
+      {
+	m_wss.close (m_ws_hdl, websocketpp::close::status::normal, "ndnd close");
       }
   }
 
@@ -135,7 +138,6 @@ private:
 
 int main ()
 {
-  std::cout << "main: start WebSocket proxy." << std::endl;
   wsproxy_server pserver;
   pserver.run ();
 }
