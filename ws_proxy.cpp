@@ -19,7 +19,7 @@ public:
   
   wsproxy_client (boost::asio::io_service *io_srvc, ws_server* wss,
 		  websocketpp::connection_hdl hdl)
-    : m_ux_sock (*io_srvc), m_wss (*wss), m_ws_hdl (hdl)
+    : m_ux_sock (*io_srvc), m_wss (*wss), m_ws_hdl (hdl), m_closed (false)
   {
     // Setup Unix socket connection to ndnd
     boost::asio::local::stream_protocol::endpoint local_ndnd ("/tmp/.ndnd.sock");
@@ -38,6 +38,11 @@ public:
   {
     m_ux_sock.async_send(boost::asio::buffer (msg), boost::bind(&wsproxy_client::on_unix_sent, this, _1, _2));
   }
+
+  void set_closed ()
+  {
+    m_closed = true;
+  }
   
 private:
   void on_unix_message (const boost::system::error_code &ec, std::size_t bytes_transferred)
@@ -53,7 +58,14 @@ private:
       }
     else
       {
-	m_wss.close (m_ws_hdl, websocketpp::close::status::normal, "ndnd close");
+#ifdef WSP_LOG
+	std::cout << "wsproxy_client::on_unix_message: close socket." << std::endl;
+#endif
+	if (m_closed == false)
+	  {
+	    websocketpp::lib::error_code ecode;
+	    m_wss.close (m_ws_hdl, websocketpp::close::status::normal, "ndnd close", ecode);
+	  }
       }
   }
 
@@ -62,10 +74,11 @@ private:
     // Dummy callback
   }
 
+  unix_socket m_ux_sock;
   ws_server& m_wss;
   websocketpp::connection_hdl m_ws_hdl;
-  unix_socket m_ux_sock;
   boost::array<char, 8192> m_buf;
+  bool m_closed;
 };
 
 class wsproxy_server
@@ -104,7 +117,7 @@ private:
       {
 	std::cout << "wsproxy_server::on_ws_message: unknown ws client." << std::endl;
       }
-    wsproxy_client* wcp = it->second;
+    auto wcp = it->second;
     wcp->send (msg->get_payload ());
   }
 
@@ -114,7 +127,10 @@ private:
 #ifdef WSP_LOG
     std::cout << "wsproxy_server::on_ws_open: create new client." << std::endl;
 #endif
-    m_clist[hdl] = new wsproxy_client(&m_io_srvc, &m_web_sock, hdl);
+    m_clist[hdl] = std::make_shared<wsproxy_client>(&m_io_srvc, &m_web_sock, hdl);
+#ifdef WSP_LOG
+    std::cout << "wsproxy_server::on_ws_open: num of client is " << m_clist.size () << std::endl;
+#endif
   }
 
   void on_ws_close(websocketpp::connection_hdl hdl)
@@ -125,13 +141,12 @@ private:
     auto it = m_clist.find (hdl);
     if (it != m_clist.end ())
       {
-	wsproxy_client* wcp = it->second;
-	delete wcp;
+	it->second->set_closed ();
 	m_clist.erase(it);
       }
   }
 
-  typedef std::map<websocketpp::connection_hdl, wsproxy_client*, std::owner_less<websocketpp::connection_hdl> > client_list;
+  typedef std::map<websocketpp::connection_hdl, std::shared_ptr<wsproxy_client>, std::owner_less<websocketpp::connection_hdl> > client_list;
   
   boost::asio::io_service m_io_srvc;
   ws_server m_web_sock;

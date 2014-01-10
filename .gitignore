@@ -13,6 +13,9 @@
 *.a
 
 .DS_Store
+.lock*
+.waf*
+build/
 
 # ws_proxy binary
 
