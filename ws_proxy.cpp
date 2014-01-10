@@ -36,7 +36,7 @@ public:
 
   void send (const std::string& msg)
   {
-    boost::asio::write (m_ux_sock, boost::asio::buffer (msg));
+    m_ux_sock.async_send(boost::asio::buffer (msg), boost::bind(&wsproxy_client::on_unix_sent, this, _1, _2));
   }
   
 private:
@@ -55,6 +55,11 @@ private:
       {
 	m_wss.close (m_ws_hdl, websocketpp::close::status::normal, "ndnd close");
       }
+  }
+
+  void on_unix_sent (const boost::system::error_code &ec, std::size_t bytes_transferred)
+  {
+    // Dummy callback
   }
 
   ws_server& m_wss;
