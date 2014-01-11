@@ -36,11 +36,11 @@ public:
     boost::asio::local::stream_protocol::endpoint local_ndnd (conf.ndnd_addr);
 
 #ifdef WSP_LOG
-    std::cout << "wsproxy_client::ctor: trying to connect to local ndnd." << std::endl;
+    std::cout << "wsproxy_client::ctor: trying to connect to " << conf.ndnd_addr << std::endl;
 #endif
     m_ux_sock.connect(local_ndnd);
 #ifdef WSP_LOG
-    std::cout << "wsproxy_client::ctor: connected to local ndnd." << std::endl;
+    std::cout << "wsproxy_client::ctor: connected to local ndnd" << std::endl;
 #endif
     m_ux_sock.async_read_some(boost::asio::buffer (m_buf), boost::bind(&wsproxy_client::on_unix_message, this, _1, _2));
   }
@@ -75,7 +75,7 @@ private:
     else
       {
 #ifdef WSP_LOG
-	std::cout << "wsproxy_client::on_unix_message: close socket." << std::endl;
+	std::cout << "wsproxy_client::on_unix_message: unix socket error" << std::endl;
 #endif
 	if (m_closed == false)
 	  {
@@ -117,7 +117,7 @@ public:
   void run ()
   {
 #ifdef WSP_LOG
-    std::cout << "wsproxy_server::run: start asio service." << std::endl;
+    std::cout << "wsproxy_server::run: start asio service" << std::endl;
 #endif
     m_io_srvc.run ();
   }
@@ -131,7 +131,7 @@ private:
     auto it = m_clist.find (hdl);
     if (it == m_clist.end ())
       {
-	std::cout << "wsproxy_server::on_ws_message: unknown ws client." << std::endl;
+	std::cout << "wsproxy_server::on_ws_message: unknown ws client" << std::endl;
       }
     auto wcp = it->second;
     wcp->send (msg->get_payload ());
@@ -141,9 +141,19 @@ private:
   {
     // New WebSocket client accepted
 #ifdef WSP_LOG
-    std::cout << "wsproxy_server::on_ws_open: create new client." << std::endl;
+    std::cout << "wsproxy_server::on_ws_open: create new client" << std::endl;
 #endif
-    m_clist[hdl] = std::make_shared<wsproxy_client>(&m_io_srvc, &m_web_sock, hdl);
+    std::shared_ptr<wsproxy_client> wcp;
+    try {
+      wcp = std::make_shared<wsproxy_client>(&m_io_srvc, &m_web_sock, hdl);
+    }
+    catch (boost::system::system_error e) {
+      std::cout << "wsproxy_server::on_ws_open: error on " << e.what () << std::endl;
+      websocketpp::lib::error_code ecode;
+      m_web_sock.close (hdl, websocketpp::close::status::normal, "ndnd dead", ecode);
+      return;
+    }
+    m_clist[hdl] = wcp;
 #ifdef WSP_LOG
     std::cout << "wsproxy_server::on_ws_open: num of client is " << m_clist.size () << std::endl;
 #endif
@@ -151,12 +161,12 @@ private:
 
   void on_ws_close(websocketpp::connection_hdl hdl)
   {
-#ifdef WSP_LOG
-    std::cout << "wsproxy_server::on_ws_close: remove client." << std::endl;
-#endif
     auto it = m_clist.find (hdl);
     if (it != m_clist.end ())
       {
+#ifdef WSP_LOG
+    std::cout << "wsproxy_server::on_ws_close: remove client" << std::endl;
+#endif
 	it->second->set_closed ();
 	m_clist.erase(it);
       }
