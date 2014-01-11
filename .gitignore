@@ -15,6 +15,7 @@
 .DS_Store
 .lock*
 .waf*
+.pyc
 build/
 
 # ws_proxy binary
