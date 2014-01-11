@@ -139,10 +139,18 @@ private:
 
   void on_ws_open (websocketpp::connection_hdl hdl)
   {
-    // New WebSocket client accepted
+    // New WebSocket client accepted    
+    if (m_clist.size () >= conf.max_clients)
+      {
+	std::cout << "wsproxy_server::on_ws_open: max # of clients exceeded" << std::endl;
+	websocketpp::lib::error_code ecode;
+	m_web_sock.close (hdl, websocketpp::close::status::normal, "max clients", ecode);
+	return;	
+      }
+
 #ifdef WSP_LOG
     std::cout << "wsproxy_server::on_ws_open: create new client" << std::endl;
-#endif
+#endif    
     std::shared_ptr<wsproxy_client> wcp;
     try {
       wcp = std::make_shared<wsproxy_client>(&m_io_srvc, &m_web_sock, hdl);
