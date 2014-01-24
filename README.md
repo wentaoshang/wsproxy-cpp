@@ -23,7 +23,7 @@ Then run the following two commands to compile:
     ./waf configure
     ./waf
 
-Note: on Ubuntu you may need to specify the location of Boost lib files during configuration. In my case, I used:
+If you need to specify the path of the boost library, you can use "--boost-libs" and "--boost-includes" options in waf. Example:
 
     ./waf configure --boost-libs=/usr/lib/x86_64-linux-gnu/
 
