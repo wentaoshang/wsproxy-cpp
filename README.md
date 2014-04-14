@@ -34,7 +34,7 @@ The compiled binary is in ./build folder:
 Options
 -------
 
-* -c [ndnd_addr]: specify the unix socket address for local ndnd. Default value is "/tmp/.ndnd.sock".
+* -c [ndnd_addr]: specify the unix socket address for local ndnd. Default value is "/tmp/nfd.sock".
 
 * -m [max_clients]: specify the number of maximum concurrent clients. Default value is 50.
 
