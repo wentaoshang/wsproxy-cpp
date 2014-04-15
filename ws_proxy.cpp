@@ -190,7 +190,7 @@ private:
 
 void init_config (proxy_config *conf)
 {
-  conf->ndnd_addr = "/tmp/nfd.sock";
+  conf->ndnd_addr = "/var/tmp/nfd.sock";
   conf->max_clients = 50;
   conf->proxy_port = 9696;
 }
@@ -200,7 +200,7 @@ void usage ()
   std::cout << "Usage: ws_proxy [options]\n"
 	    << "Supported options:\n"
 	    << "    -c [ndnd_addr]: specify the unix socket address for local ndnd\n"
-	    << "                    by default, it is /tmp/nfd.sock\n"
+	    << "                    by default, it is /var/tmp/nfd.sock\n"
 	    << "    -m [max_clients]: specify the number of maximum concurrent clients\n"
 	    << "                      by default, it is 50\n"
 	    << "    -p [proxy_port]: specify the port number for the proxy\n"
