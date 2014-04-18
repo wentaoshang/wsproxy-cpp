@@ -65,11 +65,7 @@ private:
   {
     if (!ec)
       {
-	std::string msg (m_buf.data (), bytes_transferred);
-#ifdef WSP_LOG
-	std::cout << "wsproxy_client::on_unix_message: " << msg << std::endl;
-#endif
-	m_wss.send(m_ws_hdl, msg, websocketpp::frame::opcode::binary);
+	m_wss.send (m_ws_hdl, m_buf.data (), bytes_transferred, websocketpp::frame::opcode::binary);
 	m_ux_sock.async_read_some(boost::asio::buffer (m_buf), boost::bind(&wsproxy_client::on_unix_message, this, _1, _2));
       }
     else
@@ -125,9 +121,6 @@ public:
 private:
   void on_ws_message (websocketpp::connection_hdl hdl, ws_server::message_ptr msg)
   {
-#ifdef WSP_LOG
-    std::cout << "wsproxy_server::on_ws_message: " << msg->get_payload () << std::endl;
-#endif
     auto it = m_clist.find (hdl);
     if (it == m_clist.end ())
       {
